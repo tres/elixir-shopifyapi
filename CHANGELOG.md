@@ -1,5 +1,7 @@
 ## Unreleased
 
+- Fix a pattern match bug in REST.RecurringApplicationCharge.create/2
+
 ## 0.8.1
 
 - Fix: Remove call to `String.to_existing_atom` from param serialization. This could previously result in an unexpected error from the caller.
@@ -9,7 +11,7 @@
 - BREAKING: Switch default version of REST API to 2020-01 (was 2019-04).
 - BREAKING: Add ability to specify pagination options for GET on collection resources, defaults to blocking until all results returned.
 - BREAKING: Removed top-level wrappers of Shopify REST response values.
-  + Return values that were `{:ok, %{"orders" => [%{}, ...]}}` are now `{:ok, [%{}, ...]}`
+  - Return values that were `{:ok, %{"orders" => [%{}, ...]}}` are now `{:ok, [%{}, ...]}`
 - BREAKING: Removed `Exq` dependency, EventPipe.EventQueue & EventPipe.ModuleNameWorker & surrounding modules.
 
 ## 0.7.2
