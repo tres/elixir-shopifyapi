@@ -85,9 +85,9 @@ defmodule ShopifyAPI.ShopInstaller do
   defp config_auth_token(conn, app) do
     case request_permanent_token(conn, app) do
       {:ok, auth_token} ->
-        save_auth_token(token)
-        config_default_shop_from_token(token)
-        run_shop_post_install_callback(token)
+        save_auth_token(auth_token)
+        config_default_shop_from_token(auth_token)
+        run_shop_post_install_callback(auth_token)
         {:ok, "authorized"}
       {:error, resp} ->
         {:error, "unable to fetch auth_token #{inspect(resp)}"}
