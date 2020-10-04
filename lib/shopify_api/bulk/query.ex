@@ -1,10 +1,11 @@
 defmodule ShopifyAPI.Bulk.Query do
   alias ShopifyAPI.AuthToken
-  alias ShopifyAPI.Bulk.Cancel
+  alias ShopifyAPI.Bulk.{Cancel, Telemetry}
 
   @type status_response :: map()
-  @type bulk_query_response :: :no_objects | {:ok, String.t()} | {:error, any()}
+  @type bulk_query_response :: :no_objects | String.t()
   @stream_http_timeout 5_000
+  @log_module __MODULE__ |> to_string() |> String.trim_leading("Elixir.")
 
   @polling_query """
   {
@@ -66,38 +67,58 @@ defmodule ShopifyAPI.Bulk.Query do
     end
   end
 
-  @spec exec(AuthToken.t(), String.t(), list()) :: bulk_query_response()
-  def exec(%AuthToken{} = token, query, opts) do
+  @spec exec!(AuthToken.t(), String.t(), list()) :: bulk_query_response()
+  def exec!(%AuthToken{} = token, query, opts) do
     with bulk_query <- bulk_query_string(query),
          {:ok, resp} <- ShopifyAPI.graphql_request(token, bulk_query, 10),
          :ok <- handle_errors(resp),
          bulk_query_id <- get_in(resp.response, ["bulkOperationRunQuery", "bulkOperation", "id"]),
          {:ok, url} <- poll(token, bulk_query_id, opts[:polling_rate], opts[:max_poll_count]) do
-      {:ok, url}
+      Telemetry.send(@log_module, token, {:success, :query})
+      url
     else
-      :no_objects ->
-        :no_objects
+      {:error, msg} ->
+        raise_error!(msg, token)
 
       {:error, :timeout, bulk_id} ->
+        Telemetry.send(@log_module, token, {:error, :timeout, "Bulk op timed out"}, bulk_id)
         Cancel.perform(opts[:auto_cancel], token, bulk_id)
+        raise(ShopifyAPI.Bulk.TimeoutError, "Shop: #{token.shop_name}, bulk id: #{bulk_id}")
 
-      error ->
-        error
+      :no_objects ->
+        Telemetry.send(@log_module, token, {:success, :no_objects})
+        :no_objects
     end
   end
 
-  @spec fetch(String.t() | bulk_query_response()) :: {:ok, String.t()} | {:error, any()}
-  # handle no object bulk responses
-  def fetch(:no_objects), do: {:ok, ""}
-  def fetch({:error, _} = error), do: error
-  def fetch({:ok, url}) when is_binary(url), do: fetch(url)
+  defp raise_error!(
+         "A bulk operation for this app and shop is already in progress: " <> bulk_id = msg,
+         token
+       ) do
+    Telemetry.send(@log_module, token, {:error, :in_progress, msg}, bulk_id)
+    raise(ShopifyAPI.Bulk.InProgressError, "Shop: #{token.shop_name}, bulk id: #{bulk_id}")
+  end
 
-  def fetch(url) when is_binary(url) do
+  defp raise_error!(msg, token) do
+    Telemetry.send(@log_module, token, {:error, :generic, msg})
+    raise(ShopifyAPI.Bulk.QueryError, inspect(msg))
+  end
+
+  @spec fetch(bulk_query_response(), AuthToken.t()) :: {:ok, String.t()} | {:error, any()}
+  # handle no object bulk responses
+  def fetch(:no_objects, _token), do: {:ok, ""}
+
+  def fetch(url, token) when is_binary(url) do
     url
     |> HTTPoison.get()
     |> case do
-      {:ok, %{body: jsonl}} -> {:ok, jsonl}
-      error -> error
+      {:ok, %{body: jsonl}} ->
+        Telemetry.send(@log_module, token, {:success, :fetch})
+        {:ok, jsonl}
+
+      error ->
+        Telemetry.send(@log_module, token, {:error, :fetch, error})
+        error
     end
   end
 
@@ -109,14 +130,13 @@ defmodule ShopifyAPI.Bulk.Query do
   Warning: Since HTTPoison spawns a seperate process which uses send/receive
   to stream HTTP fetches be careful where you use this.
   """
-  @spec stream_fetch!(String.t() | bulk_query_response()) :: Enumerable.t()
+  @spec stream_fetch!(bulk_query_response(), AuthToken.t()) :: Enumerable.t()
   # handle no object bulk responses
-  def stream_fetch!(:no_objects), do: []
-  def stream_fetch!({:ok, url}) when is_binary(url), do: stream_fetch!(url)
-  def stream_fetch!({:error, _} = error), do: error
+  def stream_fetch!(:no_objects, _token), do: []
 
-  def stream_fetch!(url) when is_binary(url),
-    do: url |> httpoison_streamed_get!() |> Stream.transform("", &transform_chunks_to_jsonl/2)
+  def stream_fetch!(url, token) when is_binary(url) do
+    url |> httpoison_streamed_get!(token) |> Stream.transform("", &transform_chunks_to_jsonl/2)
+  end
 
   def parse_response!(""), do: []
   def parse_response!({:ok, jsonl}), do: parse_response!(jsonl)
@@ -189,10 +209,16 @@ defmodule ShopifyAPI.Bulk.Query do
     end
   end
 
-  defp httpoison_streamed_get!(url) do
+  defp httpoison_streamed_get!(url, token) do
     Stream.resource(
       fn ->
-        HTTPoison.get!(url, %{}, stream_to: self(), async: :once)
+        try do
+          HTTPoison.get!(url, %{}, stream_to: self(), async: :once)
+        rescue
+          error ->
+            Telemetry.send(@log_module, token, {:error, :streamed_fetch, error})
+            reraise error, __STACKTRACE__
+        end
       end,
       fn %HTTPoison.AsyncResponse{id: id} = resp ->
         receive do
@@ -201,7 +227,9 @@ defmodule ShopifyAPI.Bulk.Query do
             {[], resp}
 
           %HTTPoison.AsyncStatus{id: ^id, code: code} ->
-            raise("ShopifyAPI.Bulk stream fetch got non 200 code of: #{code}")
+            error = "ShopifyAPI.Bulk stream fetch got non 200 code of: #{code}"
+            Telemetry.send(@log_module, token, {:error, :streamed_fetch, error})
+            raise(error)
 
           %HTTPoison.AsyncHeaders{id: ^id, headers: _headers} ->
             HTTPoison.stream_next(resp)
@@ -214,10 +242,16 @@ defmodule ShopifyAPI.Bulk.Query do
           %HTTPoison.AsyncEnd{id: ^id} ->
             {:halt, resp}
         after
-          @stream_http_timeout -> raise "receive timeout"
+          @stream_http_timeout ->
+            error = "receive timeout"
+            Telemetry.send(@log_module, token, {:error, :streamed_fetch, error})
+            raise error
         end
       end,
-      fn _resp -> :ok end
+      fn _resp ->
+        Telemetry.send(@log_module, token, {:success, :streamed_fetch})
+        :ok
+      end
     )
   end
 

@@ -21,7 +21,7 @@ The package can be installed by adding `shopify_api` to your list of dependencie
 ```elixir
 def deps do
   [
-    {:shopify_api, github: "pixelunion/elixir-shopifyapi", tag: "v0.9.1"}
+    {:shopify_api, github: "pixelunion/elixir-shopifyapi", tag: "v0.9.3"}
   ]
 end
 ```
@@ -36,7 +36,7 @@ end
 
 If you want to be able to handle webhooks you need to add this to your endpoint before the parsers section
 ```elixir
-plug(ShopifyAPI.Plugs.Webhook, mount: "/shop/webhooks")
+plug(ShopifyAPI.Plugs.Webhook, mount: "/shop/webhook")
 ```
 
 If you want persisted Apps, Shops, and Tokens add configuration to your functions.
@@ -240,6 +240,8 @@ The following telemetry events are generated:
 - `[:shopify_api, :throttling, :within_limit]`
 - `[:shopify_api, :graphql_request, :success]`
 - `[:shopify_api, :graphql_request, :failure]`
+- `[:shopify_api, :bulk_operation, :success]`
+- `[:shopify_api, :bulk_operation, :failure]`
 
 As an example, you could use an external module to instrument API requests made by `shopify_api`:
 
