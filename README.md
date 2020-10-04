@@ -33,24 +33,58 @@ scope "/shop" do
   forward("/", ShopifyAPI.Router)
 end
 ```
-
+### Configuring Webhooks
 If you want to be able to handle webhooks you need to add this to your endpoint before the parsers section
 ```elixir
 plug(ShopifyAPI.Plugs.Webhook, mount: "/shop/webhook")
 ```
 
-If you want persisted Apps, Shops, and Tokens add configuration to your functions.
+### Configuring Library Callback Hooks
+The following callback hooks are provided so that you can hook your own logic into events as they occur.
+
+#### Data Persistence Callbacks
+If you want persisted Apps, Shops, and Tokens, use the following hooks.
+
+##### `AuthTokenServer` callbacks
+`AuthTokenServer` provides you two callback mechanisms to hook into: `initializer` to handle hydrating the datastore from your database on app start and `persistance` to allow you to store AuthToken data in your database.
+
 ```elixir
 config :shopify_api, ShopifyAPI.AuthTokenServer,
   initializer: {MyApp.AuthToken, :init, []},
   persistance: {MyApp.AuthToken, :save, []}
+```
+* `initializer` Use this callback to provide your app a way to hydrate the AuthTokenServer data store on application startup.
+* `persistance` Use this callback to provide your app a way to persist AuthToken data.
+
+##### `AppServer` callbacks
+`AppServer` provides you two callback mechanisms to hook into: `initializer` to handle hydrating the AuthTokenServer datastore from your database on app start and `persistance` to allow you to store App data in your database.
+
+```elixir
 config :shopify_api, ShopifyAPI.AppServer,
   initializer: {MyApp.ShopifyApp, :init, []},
   persistance: {MyApp.ShopifyApp, :save, []}
+```
+* `initializer` Use this callback to provide your app a way to hydrate the AppServer data store on application startup.
+* `persistance` Use this callback to provide your app a way to persist AppServer data.
+
+##### `ShopServer` callbacks
+`ShopServer` provides you two callback mechanisms to hook into: `initializer` to handle hydrating the ShopServer datastore from your database on app start and `persistance` to allow you to store Shop data in your database.
+
+```elixir
 config :shopify_api, ShopifyAPI.ShopServer,
   initializer: {MyApp.Shop, :init, []},
   persistance: {MyApp.Shop, :save, []}
 ```
+* `initializer` Use this callback to provide your app a way to hydrate the ShopServer data store on application startup.
+* `persistance` Use this callback to provide your app a way to persist ShopServer data.
+
+##### `Shop` callbacks
+```elixir
+  config :shopify_api, ShopifyAPI.Shop,
+         post_install: {MyApp.Shop, :post_app_install_callback, []}
+```
+* `post_install` Use this callback to provide your app a way to perform custom actions to take place after the application has been installed in a shop. 
+
 
 Optional, add graphiql to your phoenix routes
 ```elixir
