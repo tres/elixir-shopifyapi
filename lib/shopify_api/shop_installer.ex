@@ -3,7 +3,7 @@ defmodule ShopifyAPI.ShopInstaller do
 
   alias Plug.Conn
 
-  alias ShopifyAPI.{App, AuthToken, AuthTokenServer, ConnHelpers}
+  alias ShopifyAPI.{App, AuthToken, AuthTokenServer, ConnHelpers, ShopServer}
   alias ShopifyAPI.Shop
 
   @spec initialize_installation(Plug.Conn.t()) :: Plug.Conn.t()
