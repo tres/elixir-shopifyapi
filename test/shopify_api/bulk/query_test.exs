@@ -55,8 +55,8 @@ defmodule ShopifyAPI.Bulk.QueryTest do
       Plug.Conn.resp(conn, 200, "#{Jason.encode!(@valid_jsonl_response)}\n")
     end)
 
-    assert {:ok, url} = Query.exec(token, "fake_query", options)
-    assert {:ok, _} = Query.fetch(url)
+    assert url = Query.exec!(token, "fake_query", options)
+    assert {:ok, _} = Query.fetch(url, token)
   end
 
   test "polling timeout", %{bypass: bypass, shop: _shop, auth_token: token, options: options} do
@@ -72,8 +72,9 @@ defmodule ShopifyAPI.Bulk.QueryTest do
       Plug.Conn.resp(conn, 200, body)
     end)
 
-    resp = Query.exec(token, "fake_query", options)
-    assert resp == {:error, "BulkFetch timed out before completion"}
+    assert_raise ShopifyAPI.Bulk.TimeoutError, fn ->
+      Query.exec!(token, "fake_query", options)
+    end
   end
 
   test "invalid graphql", %{bypass: bypass, shop: _shop, auth_token: token, options: options} do
@@ -91,15 +92,45 @@ defmodule ShopifyAPI.Bulk.QueryTest do
       Plug.Conn.resp(conn, 200, body)
     end)
 
-    resp = Query.exec(token, "fake_query", options)
-    assert resp == {:error, "Bulk query is not valid GraphQL"}
+    assert_raise ShopifyAPI.Bulk.QueryError, fn ->
+      Query.exec!(token, "fake_query", options)
+    end
+  end
+
+  test "bulk op already in progress", %{
+    bypass: bypass,
+    shop: _shop,
+    auth_token: token,
+    options: options
+  } do
+    Bypass.expect(bypass, "POST", @graphql_path, fn conn ->
+      body =
+        @valid_graphql_response
+        |> put_in(
+          ["data", "bulkOperationRunQuery", "userErrors"],
+          [
+            %{
+              "field" => nil,
+              "message" =>
+                "A bulk operation for this app and shop is already in progress: gid://fake-bulk-op-id"
+            }
+          ]
+        )
+        |> Jason.encode!()
+
+      Plug.Conn.resp(conn, 200, body)
+    end)
+
+    assert_raise ShopifyAPI.Bulk.InProgressError, fn ->
+      Query.exec!(token, "fake_query", options)
+    end
   end
 
   @json1 %{"test" => "foo"}
   @json2 %{"test" => "bar fuzz"}
   @json3 %{"test" => "baz\nbuzz"}
 
-  test "stream_fetch!/1", %{bypass: bypass, url: url} do
+  test "stream_fetch!/2", %{bypass: bypass, url: url, auth_token: token} do
     Bypass.expect(bypass, "GET", "/", fn conn ->
       conn =
         conn
@@ -112,10 +143,12 @@ defmodule ShopifyAPI.Bulk.QueryTest do
       conn
     end)
 
-    assert url |> Query.stream_fetch!() |> Enum.map(&Jason.decode!/1) == [@json1, @json2, @json3]
+    assert url
+           |> Query.stream_fetch!(token)
+           |> Enum.map(&Jason.decode!/1) == [@json1, @json2, @json3]
   end
 
-  test "stream_fetch!/1 with jsonl across chunks", %{bypass: bypass, url: url} do
+  test "stream_fetch!/2 with jsonl across chunks", %{bypass: bypass, url: url, auth_token: token} do
     Bypass.expect(bypass, "GET", "/", fn conn ->
       conn =
         conn
@@ -129,10 +162,16 @@ defmodule ShopifyAPI.Bulk.QueryTest do
       conn
     end)
 
-    assert url |> Query.stream_fetch!() |> Enum.map(&Jason.decode!/1) == [@json1, @json2, @json3]
+    assert url
+           |> Query.stream_fetch!(token)
+           |> Enum.map(&Jason.decode!/1) == [@json1, @json2, @json3]
   end
 
-  test "stream_fetch!/1 with non-200 response codes", %{bypass: bypass, url: url} do
+  test "stream_fetch!/2 with non-200 response codes", %{
+    bypass: bypass,
+    url: url,
+    auth_token: token
+  } do
     Bypass.expect(bypass, "GET", "/", fn conn ->
       conn =
         conn
@@ -145,7 +184,7 @@ defmodule ShopifyAPI.Bulk.QueryTest do
     end)
 
     assert_raise(RuntimeError, fn ->
-      url |> Query.stream_fetch!() |> Enum.to_list()
+      url |> Query.stream_fetch!(token) |> Enum.to_list()
     end)
   end
 end
