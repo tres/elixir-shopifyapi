@@ -89,6 +89,7 @@ defmodule ShopifyAPI.ShopInstaller do
         config_default_shop_from_token(auth_token)
         run_shop_post_install_callback(auth_token)
         {:ok, "authorized"}
+
       {:error, resp} ->
         {:error, "unable to fetch auth_token #{inspect(resp)}"}
     end
