@@ -5,7 +5,7 @@
   - [Installing this app in a Shop](#Installing-this-app-in-a-Shop)
   - [Configuration](#Configuration)
     - [API Version](#API-Version)
-    - [CacheSupervisor](#cachesupervisor)
+    - [Supervisor](#supervisor)
     - [Background Runner](#Background-Runner)
     - [Shops](#Shops)
     - [Apps](#Apps)
@@ -21,7 +21,7 @@ The package can be installed by adding `shopify_api` to your list of dependencie
 ```elixir
 def deps do
   [
-    {:shopify_api, github: "pixelunion/elixir-shopifyapi", tag: "v0.9.3"}
+    {:shopify_api, github: "pixelunion/elixir-shopifyapi", tag: "v0.9.4"}
   ]
 end
 ```
@@ -86,18 +86,6 @@ config :shopify_api, ShopifyAPI.ShopServer,
 * `post_install` Use this callback to provide your app a way to perform custom actions to take place after the application has been installed in a shop. 
 
 
-Optional, add graphiql to your phoenix routes
-```elixir
-if Mix.env == :dev do
-  forward(
-    "/graphiql",
-    to: Absinthe.Plug.GraphiQL,
-    schema: GraphQL.Config.Schema,
-    interface: :playground
-  )
-end
-```
-
 ## Installing this app in a Shop
 
 There is a boilerplate repo for quickly getting up and running at [ShopifyApp](https://github.com/pixelunion/elixir-shopify-app)
@@ -109,8 +97,6 @@ There is a boilerplate repo for quickly getting up and running at [ShopifyApp](h
 
 ## Configuration
 
-There is a GraphQL interface to get and update configuration, this is the recommended way of pushing configuration in to your server.
-
 ### API Version
 
 Shopify introduced API versioning here: https://help.shopify.com/en/api/versioning
@@ -121,84 +107,27 @@ Configure the version to use in your config.exs, it will default to a stable ver
 config :shopify_api, ShopifyAPI.REST, api_version: "2019-04"
 ```
 
-### Cache Supervisor
+### Supervisor
 
-The ShopifyAPI has three cache servers, App, Shop, and Auth Token. These speed up access to data structures used for interacting with Shopify. A supervisor, ShopifyAPI.CacheSupervisor, is there to help manage start up and maintain all three. Add the CacheSupervisor to your application start up and define [some hooks for preloading data](#Installation).
+The ShopifyAPI has three servers for caching commonly-used structs - `AppServer`, `ShopServer`, and `AuthTokenServer`.
+These act as a write-through caching layer for their corresponding data structure.
 
-NOTE: Make sure you start the services or supervisor after services that are using in preloading the data. (ie Ecto)
+A supervisor `ShopifyAPI.Supervisor` is provided to start up and supervise all three servers.
+Add it to your application's supervision tree, and define [hooks for preloading data](#Installation).
+
+NOTE: Make sure you place the supervisor after any dependencies used in preloading the data. (ie Ecto)
 
 Add the following to your application:
 
 ```elixir
 def start(_type, _args) do
-  # Define workers and child supervisors to be supervised
   children = [
     MyApp.Repo,
-    ShopifyAPI.CacheSupervisor
+    ShopifyAPI.Supervisor
   ]
 
   Supervisor.start_link(children, strategy: :one_for_one)
 end
-```
-
-### Shops
-
-example fetch:
-```bash
-curl \
-  -X POST \
-  -H "Content-Type: application/json" \
-  --data '{"query": "{ allShops { domain } }"}' \
-http://localhost:4000/shop/graphql/config
-```
-
-example set:
-```bash
-curl \
-  -X POST \
-  -H "Content-Type: application/json" \
-  --data '{"query": "mutation M { updateShop(domain: \"<STORE-DOMAIN>\",) { domain } }" }' \
-http://localhost:4000/shop/graphql/config
-```
-
-### Apps
-
-example fetch:
-```bash
-curl \
-  -X POST \
-  -H "Content-Type: application/json" \
-  --data '{"query": "{ allApps { authRedirectUri, clientId, clientSecret, name, nonce, scope } }"}' \
-http://localhost:4000/shop/graphql/config
-```
-
-example set:
-```bash
-curl \
-  -X POST \
-  -H "Content-Type: application/json" \
-  --data '{"query": "mutation M { updateApp(authRedirectUri: \"<REDIRECT-URI>\", clientId: <ID>, clientSecret: \"<SECRET>\", name: \"<APP-NAME>\", nonce: \"<NONCE>\", scope: \"<APP-SCOPE>\") { name } }" }' \
-http://localhost:4000/shop/graphql/config
-```
-
-### AuthTokens
-
-example fetch:
-```bash
-curl \
-  -X POST \
-  -H "Content-Type: application/json" \
-  --data '{"query": "{ allAuthTokens { appName, shopName, token, timestamp, code } }"}' \
-http://localhost:4000/shop/graphql/config
-```
-
-example set:
-```bash
-curl \
-  -X POST \
-  -H "Content-Type: application/json" \
-  --data '{"query": "mutation M { updateAuthToken(token: \"<TOKEN>\", timestamp: <TIMESTAMP>, shopName: \"<SHOPIFY-STORE-DOMAIN>\", code: \"<RESPONSE-CODE>\", appName: \"<APP-NAME>\") { appName } }" }' \
-http://localhost:4000/shop/graphql/config
 ```
 
 ## Webhooks

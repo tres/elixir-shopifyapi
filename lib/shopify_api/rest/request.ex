@@ -12,9 +12,9 @@ defmodule ShopifyAPI.REST.Request do
   alias HTTPoison.Error
   alias ShopifyAPI.{AuthToken, JSONSerializer, RateLimiting, Throttled}
 
-  @default_api_version "2020-01"
+  @default_api_version "2020-10"
 
-  @http_receive_timeout Application.get_env(:shopify_api, :http_timeout)
+  @http_receive_timeout Application.compile_env(:shopify_api, :http_timeout)
 
   @type http_method :: :get | :post | :put | :delete
 
@@ -197,8 +197,12 @@ defmodule ShopifyAPI.REST.Request do
 
   defp remaining_calls(_), do: nil
 
-  defp url(%{shop_name: domain}, path),
-    do: "#{ShopifyAPI.transport()}#{domain}/admin/api/#{version()}/#{path}"
+  # Absolute URL generator
+  defp url(%{shop_name: domain}, <<?/, path::binary>>),
+    do: "#{ShopifyAPI.transport()}#{domain}/#{path}"
+
+  # Relative with version URL generator
+  defp url(shop, path), do: url(shop, "/admin/api/#{version()}/#{path}")
 
   defp headers(%{token: access_token}) do
     [
