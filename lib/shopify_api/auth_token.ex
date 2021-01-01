@@ -22,7 +22,7 @@ defmodule ShopifyAPI.AuthToken do
           token: String.t(),
           timestamp: 0,
           plus: boolean(),
-          app_data: Map.t()
+          app_data: map()
         }
 
   @spec create_key(t()) :: String.t()

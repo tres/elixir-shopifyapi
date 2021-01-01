@@ -30,7 +30,7 @@ defmodule ShopifyAPI.App do
           auth_redirect_uri: String.t(),
           nonce: String.t(),
           scope: String.t(),
-          app_data: Map.t()
+          app_data: map()
         }
 
   require Logger
