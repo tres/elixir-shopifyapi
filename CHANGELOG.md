@@ -1,5 +1,58 @@
 ## Unreleased
 
+- Fix: Allow options to be passed to HTTPoison when making GET requests through `ShopifyAPI.REST`.
+
+## 0.12.2
+
+- Fix: also handle 403s when raising custom bulk fetch errors
+
+## 0.12.1
+
+- Fix: properly handle both 402 and 423s when raising custom bulk fetch errors
+
+## 0.12.0
+
+- BREAKING: Remove `ShopifyAPI.REST.Tag` and associated tests
+- BREAKING: Noted spelling fix of persistance to persistence in v 0.10.0
+- Fix: match on status code instead of error string when raising custom bulk fetch errors
+
+## 0.11.0
+
+- BREAKING: removed Elixir 1.9 and OTP 21 support
+- Switch `ShopifyAPI.JSONSerializer` to be configured at compile-time, not runtime.
+- BREAKING: Rename Shopify API environment variable from `http_timeout` to `rest_recv_timeout`
+- Add the ability to pass a list of HTTPoison options to `Rest.post` and `Rest.put`
+  - Add 4th param to ShopifyAPI.REST.Fulfillment.create/4
+
+## 0.10.3
+
+- Add a REST checkout endpoint
+
+## 0.10.2
+
+- Fix: return on success for AuthTokenServer.set/1
+- Add specs to AuthTokenServer, AppServer, and ShopServer public functions
+
+## 0.10.1
+
+- Add: REST.Redirect - thanks @tres
+- Fix: Broken path for REST.AccessScopes.get/1
+
+## 0.10.0
+
+- BREAKING: `AppServer`, `ShopServer`, `AuthTokenServer` configuration had spelling mistake which was corrected, persistance became persistence.
+- BREAKING: Rename `ShopifyAPI.CacheSupervisor` to `ShopifyAPI.Supervisor`.
+- Upgrade `AppServer`, `ShopServer`, and `AuthTokenServer` to use ets-backed caching.
+- Change default Shopify API version to `2020-10`.
+- BREAKING: Remove GraphQL App/Shop/AuthToken servers.
+  - If you want this/use this, grab it out of the git history and import in to your project.
+- Fix a pattern match bug in REST.RecurringApplicationCharge.create/2
+
+## 0.9.4
+
+- "/install" route now handles app name in path - thanks @tres
+- Throw ShopNotFoundError and ShopUnavailableError in Bulk.Query.exec/3
+
 ## 0.9.3
 
 - Fix: Bulk Telemetry event name is now correct.

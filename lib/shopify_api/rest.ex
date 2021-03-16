@@ -11,6 +11,8 @@ defmodule ShopifyAPI.REST do
   alias ShopifyAPI.JSONSerializer
   alias ShopifyAPI.REST.Request
 
+  @default_pagination Application.compile_env(:shopify_api, :pagination, :auto)
+
   @doc """
   Underlying utility retrieval function. The options passed affect both the
   return value and, ultimately, the number of requests made to Shopify.
@@ -26,18 +28,20 @@ defmodule ShopifyAPI.REST do
   @spec get(AuthToken.t(), path :: String.t(), keyword(), keyword()) ::
           {:ok, %{required(String.t()) => [map()]}} | Enumerable.t()
   def get(%AuthToken{} = auth, path, params \\ [], options \\ []) do
-    case pagination(options) do
+    {pagination, opts} = Keyword.pop(options, :pagination, @default_pagination)
+
+    case pagination do
       :none ->
-        with {:ok, response} <- Request.perform(auth, :get, path, "", params) do
+        with {:ok, response} <- Request.perform(auth, :get, path, "", params, opts) do
           {:ok, fetch_body(response)}
         end
 
       :stream ->
-        Request.stream(auth, path, params)
+        Request.stream(auth, path, params, opts)
 
       :auto ->
         auth
-        |> Request.stream(path, params)
+        |> Request.stream(path, params, opts)
         |> collect_results()
     end
   end
@@ -57,24 +61,24 @@ defmodule ShopifyAPI.REST do
   end
 
   @doc false
-  def post(%AuthToken{} = auth, path, object \\ %{}) do
+  def post(%AuthToken{} = auth, path, object \\ %{}, options \\ []) do
     with {:ok, body} <- JSONSerializer.encode(object) do
-      perform_request(auth, :post, path, body)
+      perform_request(auth, :post, path, body, options)
     end
   end
 
   @doc false
-  def put(%AuthToken{} = auth, path, object) do
+  def put(%AuthToken{} = auth, path, object, options \\ []) do
     with {:ok, body} <- JSONSerializer.encode(object) do
-      perform_request(auth, :put, path, body)
+      perform_request(auth, :put, path, body, options)
     end
   end
 
   @doc false
   def delete(%AuthToken{} = auth, path), do: perform_request(auth, :delete, path)
 
-  defp perform_request(auth, method, path, body \\ "") do
-    with {:ok, response} <- Request.perform(auth, method, path, body),
+  defp perform_request(auth, method, path, body \\ "", options \\ []) do
+    with {:ok, response} <- Request.perform(auth, method, path, body, [], options),
          response_body <- fetch_body(response) do
       {:ok, response_body}
     end
@@ -82,10 +86,5 @@ defmodule ShopifyAPI.REST do
 
   defp fetch_body(http_response) do
     Map.fetch!(http_response, :body)
-  end
-
-  @spec pagination(keyword) :: atom | nil
-  defp pagination(options) do
-    Keyword.get(options, :pagination, Application.get_env(:shopify_api, :pagination, :auto))
   end
 end

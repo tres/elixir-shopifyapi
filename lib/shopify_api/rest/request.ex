@@ -12,9 +12,9 @@ defmodule ShopifyAPI.REST.Request do
   alias HTTPoison.Error
   alias ShopifyAPI.{AuthToken, JSONSerializer, RateLimiting, Throttled}
 
-  @default_api_version "2020-01"
+  @default_api_version "2020-10"
 
-  @http_receive_timeout Application.get_env(:shopify_api, :http_timeout)
+  @rest_receive_timeout Application.compile_env(:shopify_api, :rest_recv_timeout)
 
   @type http_method :: :get | :post | :put | :delete
 
@@ -25,15 +25,18 @@ defmodule ShopifyAPI.REST.Request do
           http_method(),
           path :: String.t(),
           body :: String.t(),
-          params :: keyword()
+          params :: keyword(),
+          options :: keyword()
         ) :: {:ok, HTTPoison.Response.t()} | {:error, HTTPoison.Response.t() | any()}
-  def perform(%AuthToken{} = token, method, path, body \\ "", params \\ []) do
+  def perform(%AuthToken{} = token, method, path, body \\ "", params \\ [], options \\ []) do
     url = token |> url(path) |> add_params_to_url(params)
     headers = headers(token)
 
+    opts = Keyword.put_new(options, :token, token)
+
     transform_response(
       Throttled.request(
-        fn -> logged_request(method, url, body, headers, token: token) end,
+        fn -> logged_request(method, url, body, headers, opts) end,
         token,
         RateLimiting.RESTTracker
       )
@@ -60,9 +63,10 @@ defmodule ShopifyAPI.REST.Request do
     end
   end
 
-  @spec stream(AuthToken.t(), String.t(), keyword()) :: Enumerable.t()
-  def stream(auth, path, params) do
+  @spec stream(AuthToken.t(), String.t(), keyword(), keyword()) :: Enumerable.t()
+  def stream(auth, path, params, options \\ []) do
     headers = headers(auth)
+    opts = Keyword.put_new(options, :token, auth)
 
     start_fun = fn -> auth |> url(path) |> add_params_to_url(params) end
 
@@ -70,7 +74,7 @@ defmodule ShopifyAPI.REST.Request do
       url when is_binary(url) ->
         shopify_response =
           Throttled.request(
-            fn -> logged_request(:get, url, "", headers, token: auth) end,
+            fn -> logged_request(:get, url, "", headers, opts) end,
             auth,
             RateLimiting.RESTTracker
           )
@@ -116,7 +120,7 @@ defmodule ShopifyAPI.REST.Request do
 
   @impl true
   def process_request_options(opts) do
-    Keyword.put_new(opts, :recv_timeout, @http_receive_timeout)
+    Keyword.put_new(opts, :recv_timeout, @rest_receive_timeout)
   end
 
   @impl true
@@ -197,8 +201,12 @@ defmodule ShopifyAPI.REST.Request do
 
   defp remaining_calls(_), do: nil
 
-  defp url(%{shop_name: domain}, path),
-    do: "#{ShopifyAPI.transport()}#{domain}/admin/api/#{version()}/#{path}"
+  # Absolute URL generator
+  defp url(%{shop_name: domain}, <<?/, path::binary>>),
+    do: "#{ShopifyAPI.transport()}#{domain}/#{path}"
+
+  # Relative with version URL generator
+  defp url(shop, path), do: url(shop, "/admin/api/#{version()}/#{path}")
 
   defp headers(%{token: access_token}) do
     [
