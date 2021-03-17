@@ -1,6 +1,20 @@
 defmodule ShopifyAPI do
-  alias ShopifyAPI.RateLimiting
-  alias ShopifyAPI.Throttled
+  alias ShopifyAPI.{Config, RateLimiting, Throttled}
+  require Logger
+
+  @doc """
+    adapter() provides a means for library integrators to override the default ShopifyAPI.RESTClient.
+  This is primarily useful for running tests in logic that uses the ShopifyAPI library where we want
+      to bypass the request to Shopify.
+  """
+  @spec adapter() :: atom()
+  def adapter do
+    case Config.lookup(__MODULE__, :adapter) do
+      n when is_nil(n) -> ShopifyAPI.RESTClient
+      n when is_atom(n) -> n
+      n when is_binary(n) -> String.to_existing_atom(n)
+    end
+  end
 
   @doc """
   A helper function for making throttled GraphQL requests.
