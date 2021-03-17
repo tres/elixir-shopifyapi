@@ -1,6 +1,20 @@
 ## Unreleased
 
+- Fix: Allow options to be passed to HTTPoison when making GET requests through `ShopifyAPI.REST`.
+
+## 0.12.2
+
+- Fix: also handle 403s when raising custom bulk fetch errors
+
+## 0.12.1
+
+- Fix: properly handle both 402 and 423s when raising custom bulk fetch errors
+
+## 0.12.0
+
 - BREAKING: Remove `ShopifyAPI.REST.Tag` and associated tests
+- BREAKING: Noted spelling fix of persistance to persistence in v 0.10.0
+- Fix: match on status code instead of error string when raising custom bulk fetch errors
 
 ## 0.11.0
 
@@ -26,6 +40,7 @@
 
 ## 0.10.0
 
+- BREAKING: `AppServer`, `ShopServer`, `AuthTokenServer` configuration had spelling mistake which was corrected, persistance became persistence.
 - BREAKING: Rename `ShopifyAPI.CacheSupervisor` to `ShopifyAPI.Supervisor`.
 - Upgrade `AppServer`, `ShopServer`, and `AuthTokenServer` to use ets-backed caching.
 - Change default Shopify API version to `2020-10`.

@@ -21,7 +21,7 @@ The package can be installed by adding `shopify_api` to your list of dependencie
 ```elixir
 def deps do
   [
-    {:shopify_api, github: "pixelunion/elixir-shopifyapi", tag: "v0.11.0"}
+    {:shopify_api, github: "pixelunion/elixir-shopifyapi", tag: "v0.12.2"}
   ]
 end
 ```
@@ -184,7 +184,7 @@ config :shopify_api, ShopifyAPI.AppServer,
 ```elixir
 config :shopify_api, ShopifyAPI.ShopServer,
   initializer: {MyApp.Shop, :init, []},
-  persistance: {MyApp.Shop, :save, []}
+  persistence: {MyApp.Shop, :save, []}
 ```
 * `initializer` Use this callback to provide your app a way to hydrate the ShopServer data store on application startup.
 * `persistance` Use this callback to provide your app a way to persist ShopServer data.

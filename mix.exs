@@ -1,7 +1,7 @@
 defmodule Plug.ShopifyAPI.MixProject do
   use Mix.Project
 
-  @version "0.11.0"
+  @version "0.12.2"
 
   def project do
     [
@@ -41,7 +41,7 @@ defmodule Plug.ShopifyAPI.MixProject do
       # Dev and Test
       {:bypass, "~> 2.1", only: :test},
       {:credo, "~> 1.0", only: [:dev, :test]},
-      {:dialyxir, "~> 1.0.0-rc.6", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.1.0", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.23.0", only: [:dev], runtime: false},
       {:excoveralls, ">= 0.0.0", only: [:dev, :test]},
       {:stream_data, "~> 0.5.0", only: :test},

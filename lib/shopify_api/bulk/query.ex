@@ -7,6 +7,14 @@ defmodule ShopifyAPI.Bulk.Query do
   @stream_http_timeout 5_000
   @log_module __MODULE__ |> to_string() |> String.trim_leading("Elixir.")
 
+  # According to Shopify's documentation, 403 is supposed to be returned when requesting a
+  # resource while lacking appropriate scopes, which is the case for the REST API. For the
+  # GraphQL API, when you request a resource while lacking appropriate scopes, a 200 is returned
+  # with an "ACCESS_DENIED" error message. We are seeing GraphQL responses with both 402 and 403
+  # statuses with an "Unavailable Shop" error message
+  # https://shopify.dev/concepts/about-apis/response-codes
+  @shop_unavailable_status_codes [402, 403, 423]
+
   @polling_query """
   {
     currentBulkOperation {
@@ -99,12 +107,13 @@ defmodule ShopifyAPI.Bulk.Query do
     raise(ShopifyAPI.Bulk.InProgressError, "Shop: #{token.shop_name}, bulk id: #{bulk_id}")
   end
 
-  defp raise_error!(%HTTPoison.Response{body: %{"errors" => "Unavailable Shop"}} = msg, token) do
+  defp raise_error!(%HTTPoison.Response{status_code: code} = msg, token)
+       when code in @shop_unavailable_status_codes do
     Telemetry.send(@log_module, token, {:error, :shop_unavailable, msg})
     raise(ShopifyAPI.ShopUnavailableError, "Shop: #{token.shop_name}")
   end
 
-  defp raise_error!(%HTTPoison.Response{body: %{"errors" => "Not Found"}} = msg, token) do
+  defp raise_error!(%HTTPoison.Response{status_code: 404} = msg, token) do
     Telemetry.send(@log_module, token, {:error, :shop_not_found, msg})
     raise(ShopifyAPI.ShopNotFoundError, "Shop: #{token.shop_name}")
   end
