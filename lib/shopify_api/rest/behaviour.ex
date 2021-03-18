@@ -8,7 +8,17 @@ defmodule ShopifyAPI.REST.Behaviour do
 
   @callback get(AuthToken.t(), path :: String.t(), keyword(), keyword()) ::
               {:ok, %{required(String.t()) => [map()]}} | Enumerable.t()
+  @callback get(AuthToken.t(), path :: String.t(), keyword()) ::
+              {:ok, %{required(String.t()) => [map()]}} | Enumerable.t()
+  @callback get(AuthToken.t(), path :: String.t()) ::
+              {:ok, %{required(String.t()) => [map()]}} | Enumerable.t()
+
   @callback post(AuthToken.t(), path :: String.t(), map(), keyword()) :: {:ok, map()}
+  @callback post(AuthToken.t(), path :: String.t(), map()) :: {:ok, map()}
+  @callback post(AuthToken.t(), path :: String.t()) :: {:ok, map()}
+
   @callback put(AuthToken.t(), path :: String.t(), map(), keyword()) :: {:ok, map()}
+  @callback put(AuthToken.t(), path :: String.t(), map()) :: {:ok, map()}
+
   @callback delete(AuthToken.t(), path :: String.t()) :: {:ok, map()}
 end
