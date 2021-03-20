@@ -26,16 +26,16 @@ defmodule ShopifyAPI.REST do
 
   """
 
-  defdelegate get(_token, _path), to: ShopifyAPI.adapter()
-  defdelegate get(_token, _path, _params), to: ShopifyAPI.adapter()
-  defdelegate get(_token, _path, _params, _options), to: ShopifyAPI.adapter()
+  defdelegate get(token, path), to: ShopifyAPI.adapter()
+  defdelegate get(token, path, params), to: ShopifyAPI.adapter()
+  defdelegate get(token, path, params, options), to: ShopifyAPI.adapter()
 
-  defdelegate post(_token, _path), to: ShopifyAPI.adapter()
-  defdelegate post(_token, _path, _obj), to: ShopifyAPI.adapter()
-  defdelegate post(_token, _path, _obj, _options), to: ShopifyAPI.adapter()
+  defdelegate post(token, path), to: ShopifyAPI.adapter()
+  defdelegate post(token, path, obj), to: ShopifyAPI.adapter()
+  defdelegate post(token, path, obj, options), to: ShopifyAPI.adapter()
 
-  defdelegate put(_token, _path, _obj), to: ShopifyAPI.adapter()
-  defdelegate put(_token, _path, _obj, _options), to: ShopifyAPI.adapter()
+  defdelegate put(token, path, obj), to: ShopifyAPI.adapter()
+  defdelegate put(token, path, obj, options), to: ShopifyAPI.adapter()
 
-  defdelegate delete(_token, _path), to: ShopifyAPI.adapter()
+  defdelegate delete(token, path), to: ShopifyAPI.adapter()
 end
