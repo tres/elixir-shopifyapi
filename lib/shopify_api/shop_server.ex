@@ -6,6 +6,8 @@ defmodule ShopifyAPI.ShopServer do
   alias ShopifyAPI.Config
   alias ShopifyAPI.Shop
 
+  @behaviour ShopifyAPI.ServerBehaviour
+
   @table __MODULE__
 
   def all do
@@ -24,11 +26,11 @@ defmodule ShopifyAPI.ShopServer do
     :ok
   end
 
-  @spec get(String.t()) :: {:ok, Shop.t()} | :error
+  @spec get(String.t()) :: {:ok, Shop.t()} | {:error, string()}
   def get(domain) do
     case :ets.lookup(@table, domain) do
       [{^domain, shop}] -> {:ok, shop}
-      [] -> :error
+      [] -> {:error, "shop for domain #{domain} not found"}
     end
   end
 

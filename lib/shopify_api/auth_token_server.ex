@@ -6,6 +6,8 @@ defmodule ShopifyAPI.AuthTokenServer do
   alias ShopifyAPI.AuthToken
   alias ShopifyAPI.Config
 
+  @behaviour ShopifyAPI.ServerBehaviour
+
   @table __MODULE__
 
   def all do
