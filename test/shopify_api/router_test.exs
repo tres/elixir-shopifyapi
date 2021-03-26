@@ -24,7 +24,7 @@ defmodule Test.ShopifyAPI.RouterTest do
   @client_secret "5fd0b04756f115ecb0820cabc1779a2286e32b66501936c9d7103907bcba9ef1"
 
   setup_all do
-    AppServer.set(@app_name, %App{
+    AppServer.set(%App{
       auth_redirect_uri: @redirect_uri,
       client_secret: @client_secret,
       name: @app_name,

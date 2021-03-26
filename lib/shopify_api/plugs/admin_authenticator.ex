@@ -58,7 +58,7 @@ defmodule ShopifyAPI.Plugs.AdminAuthenticator do
         Logger.info("#{__MODULE__} failed hmac validation")
         send_unauthorized_response(conn)
 
-      :error ->
+      {:error, _msg} ->
         send_unauthorized_response(conn)
     end
   end

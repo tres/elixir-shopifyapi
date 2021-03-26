@@ -10,23 +10,28 @@ defmodule ShopifyAPI.ShopServer do
 
   @table __MODULE__
 
+  @impl true
+  @spec all() :: map()
   def all do
     @table
     |> :ets.tab2list()
     |> Map.new()
   end
 
+  @impl true
   @spec count() :: integer()
   def count, do: :ets.info(@table, :size)
 
-  @spec set(Shop.t()) :: :ok
+  @impl true
+  @spec set(Shop.t(), boolean()) :: :ok
   def set(%Shop{domain: domain} = shop, persist? \\ true) do
     :ets.insert(@table, {domain, shop})
     if persist?, do: do_persist(shop)
     :ok
   end
 
-  @spec get(String.t()) :: {:ok, Shop.t()} | {:error, string()}
+  @impl true
+  @spec get(String.t()) :: {:ok, Shop.t()} | {:error, String.t()}
   def get(domain) do
     case :ets.lookup(@table, domain) do
       [{^domain, shop}] -> {:ok, shop}
@@ -47,6 +52,12 @@ defmodule ShopifyAPI.ShopServer do
       _ ->
         {:error, "Shop for #{domain} could not be deleted deleted. Shop not found"}
     end
+  end
+
+  @impl true
+  @spec drop_all() :: boolean()
+  def drop_all do
+    :ets.delete_all_objects(@table)
   end
 
   ## GenServer Callbacks

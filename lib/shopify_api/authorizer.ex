@@ -34,7 +34,7 @@ defmodule ShopifyAPI.Authorizer do
     found =
       case ShopServer.get(shop_domain) do
         {:ok, _} -> true
-        :error -> false
+        {:error, _} -> false
       end
 
     Logger.debug(

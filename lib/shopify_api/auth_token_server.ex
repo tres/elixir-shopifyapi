@@ -10,22 +10,27 @@ defmodule ShopifyAPI.AuthTokenServer do
 
   @table __MODULE__
 
+  @impl true
+  @spec all() :: map()
   def all do
     @table
     |> :ets.tab2list()
     |> Map.new()
   end
 
+  @impl true
   @spec count() :: integer()
   def count, do: :ets.info(@table, :size)
 
-  @spec set(AuthToken.t()) :: :ok
+  @impl true
+  @spec set(AuthToken.t(), boolean()) :: :ok
   def set(%AuthToken{} = token, persist? \\ true) do
     :ets.insert(@table, {{token.shop_name, token.app_name}, token})
     if persist?, do: do_persist(token)
     :ok
   end
 
+  @impl true
   @spec get(String.t(), String.t()) :: {:ok, AuthToken.t()} | {:error, String.t()}
   def get(shop, app) when is_binary(shop) and is_binary(app) do
     case :ets.lookup(@table, {shop, app}) do
@@ -44,9 +49,11 @@ defmodule ShopifyAPI.AuthTokenServer do
     :ets.select(@table, match_spec)
   end
 
+  @impl true
   @spec drop(String.t(), String.t()) :: {:ok, true}
   def drop(shop, app), do: {:ok, :ets.delete(@table, {shop, app})}
 
+  @impl true
   @spec drop!(String.t(), String.t()) :: {:ok, String.t()} | {:error, String.t()}
   def drop!(shop, app) when is_binary(shop) and is_binary(app) do
     case get(shop, app) do
@@ -59,6 +66,8 @@ defmodule ShopifyAPI.AuthTokenServer do
     end
   end
 
+  @impl true
+  @spec drop_all() :: boolean()
   def drop_all do
     :ets.delete_all_objects(@table)
   end

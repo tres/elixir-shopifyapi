@@ -6,45 +6,43 @@ defmodule ShopifyAPI.AppServer do
   alias ShopifyAPI.App
   alias ShopifyAPI.Config
 
+  @behaviour ShopifyAPI.ServerBehaviour
+
   @table __MODULE__
 
+  @impl true
+  @spec all() :: map()
   def all do
     @table
     |> :ets.tab2list()
     |> Map.new()
   end
 
+  @impl true
   @spec count() :: integer()
   def count, do: :ets.info(@table, :size)
 
-  @spec set(App.t()) :: :ok
-  def set(%App{name: name} = app), do: set(name, app)
-
-  @spec set(App.t(), false) :: :ok
-  def set(%App{name: name} = app, false), do: set(name, app, false)
-
-  @spec set(String.t(), App.t()) :: :ok
-  def set(name, %App{} = app), do: set(name, app, true)
-
-  @spec set(String.t(), App.t(), true) :: :ok
-  def set(name, %App{} = app, true) do
+  @impl true
+  @spec set(App.t(), boolean()) :: :ok
+  def set(%App{name: name} = app, persist? \\ true) do
     :ets.insert(@table, {name, app})
-    do_persist(app)
+    if persist?, do: do_persist(app)
     :ok
   end
 
-  @spec set(String.t(), App.t(), false) :: :ok
-  def set(name, %App{} = app, false) do
-    :ets.insert(@table, {name, app})
-    :ok
-  end
-
-  @spec get(String.t()) :: {:ok, App.t()} | :error
+  @impl true
+  @spec get(String.t()) :: {:ok, App.t()} | {:error, String.t()}
   def get(name) do
     case :ets.lookup(@table, name) do
       [{^name, app}] -> {:ok, app}
-      [] -> :error
+      [] -> {:error, "App #{name} not found"}
     end
+  end
+
+  @impl true
+  @spec drop_all() :: boolean()
+  def drop_all do
+    :ets.delete_all_objects(@table)
   end
 
   ## GenServer Callbacks
