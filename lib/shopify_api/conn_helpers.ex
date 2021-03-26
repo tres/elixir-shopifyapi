@@ -11,7 +11,7 @@ defmodule ShopifyAPI.ConnHelpers do
 
   @doc false
   @spec optionally_create_shop(:error | {:ok, Shop.t()}, any()) :: {:ok, Shop.t()}
-  defp optionally_create_shop(:error, conn), do: {:ok, %Shop{domain: shop_domain(conn)}}
+  defp optionally_create_shop({:error, _}, conn), do: {:ok, %Shop{domain: shop_domain(conn)}}
   defp optionally_create_shop({:ok, _} = resp, _), do: resp
 
   @doc false

@@ -19,19 +19,23 @@ defmodule ShopifyAPI.ShopServer do
   @spec count() :: integer()
   def count, do: :ets.info(@table, :size)
 
-  @spec set(Shop.t()) :: :ok
-  def set(%Shop{domain: domain} = shop) do
+  @spec set(Shop.t(), boolean()) :: :ok
+  def set(%Shop{domain: domain} = shop, persist? \\ true) do
     :ets.insert(@table, {domain, shop})
-    do_persist(shop)
+    if persist?, do: do_persist(shop)
     :ok
   end
 
-  @spec get(String.t()) :: {:ok, Shop.t()} | {:error, string()}
+  @spec get(String.t()) :: {:ok, Shop.t()} | {:error, String.t()}
   def get(domain) do
     case :ets.lookup(@table, domain) do
       [{^domain, shop}] -> {:ok, shop}
       [] -> {:error, "shop for domain #{domain} not found"}
     end
+  end
+
+  def drop_all do
+    :ets.delete_all_objects(@table)
   end
 
   ## GenServer Callbacks

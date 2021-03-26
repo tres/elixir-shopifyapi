@@ -6,6 +6,8 @@ defmodule ShopifyAPI.AppServer do
   alias ShopifyAPI.App
   alias ShopifyAPI.Config
 
+  @behaviour ShopifyAPI.ServerBehaviour
+
   @table __MODULE__
 
   def all do
@@ -20,19 +22,23 @@ defmodule ShopifyAPI.AppServer do
   @spec set(App.t()) :: :ok
   def set(%App{name: name} = app), do: set(name, app)
 
-  @spec set(String.t(), App.t()) :: :ok
-  def set(name, %App{} = app) do
+  @spec set(String.t(), App.t(), boolean()) :: :ok
+  def set(name, %App{} = app, persist? \\ true) do
     :ets.insert(@table, {name, app})
-    do_persist(app)
+    if persist?, do: do_persist(app)
     :ok
   end
 
-  @spec get(String.t()) :: {:ok, App.t()} | :error
+  @spec get(String.t()) :: {:ok, App.t()} | {:error, String.t()}
   def get(name) do
     case :ets.lookup(@table, name) do
       [{^name, app}] -> {:ok, app}
-      [] -> :error
+      [] -> {:error, "App #{name} not found"}
     end
+  end
+
+  def drop_all do
+    :ets.delete_all_objects(@table)
   end
 
   ## GenServer Callbacks

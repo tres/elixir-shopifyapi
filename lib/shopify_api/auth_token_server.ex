@@ -19,7 +19,7 @@ defmodule ShopifyAPI.AuthTokenServer do
   @spec count() :: integer()
   def count, do: :ets.info(@table, :size)
 
-  @spec set(AuthToken.t()) :: :ok
+  @spec set(AuthToken.t(), boolean()) :: :ok
   def set(%AuthToken{} = token, persist? \\ true) do
     :ets.insert(@table, {{token.shop_name, token.app_name}, token})
     if persist?, do: do_persist(token)
