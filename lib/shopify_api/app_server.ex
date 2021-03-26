@@ -10,25 +10,27 @@ defmodule ShopifyAPI.AppServer do
 
   @table __MODULE__
 
+  @impl true
+  @spec all() :: map()
   def all do
     @table
     |> :ets.tab2list()
     |> Map.new()
   end
 
+  @impl true
   @spec count() :: integer()
   def count, do: :ets.info(@table, :size)
 
-  @spec set(App.t()) :: :ok
-  def set(%App{name: name} = app), do: set(name, app)
-
-  @spec set(String.t(), App.t(), boolean()) :: :ok
-  def set(name, %App{} = app, persist? \\ true) do
+  @impl true
+  @spec set(App.t(), boolean()) :: :ok
+  def set(%App{name: name} = app, persist? \\ true) do
     :ets.insert(@table, {name, app})
     if persist?, do: do_persist(app)
     :ok
   end
 
+  @impl true
   @spec get(String.t()) :: {:ok, App.t()} | {:error, String.t()}
   def get(name) do
     case :ets.lookup(@table, name) do
@@ -37,6 +39,8 @@ defmodule ShopifyAPI.AppServer do
     end
   end
 
+  @impl true
+  @spec drop_all() :: boolean()
   def drop_all do
     :ets.delete_all_objects(@table)
   end
@@ -50,7 +54,7 @@ defmodule ShopifyAPI.AppServer do
   @impl GenServer
   def init(:ok) do
     create_table!()
-    for %App{} = app <- do_initialize(), do: set(app)
+    for %App{} = app <- do_initialize(), do: set(app, false)
     {:ok, :no_state}
   end
 

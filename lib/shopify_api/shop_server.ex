@@ -10,15 +10,19 @@ defmodule ShopifyAPI.ShopServer do
 
   @table __MODULE__
 
+  @impl true
+  @spec all() :: map()
   def all do
     @table
     |> :ets.tab2list()
     |> Map.new()
   end
 
+  @impl true
   @spec count() :: integer()
   def count, do: :ets.info(@table, :size)
 
+  @impl true
   @spec set(Shop.t(), boolean()) :: :ok
   def set(%Shop{domain: domain} = shop, persist? \\ true) do
     :ets.insert(@table, {domain, shop})
@@ -26,6 +30,7 @@ defmodule ShopifyAPI.ShopServer do
     :ok
   end
 
+  @impl true
   @spec get(String.t()) :: {:ok, Shop.t()} | {:error, String.t()}
   def get(domain) do
     case :ets.lookup(@table, domain) do
@@ -34,6 +39,23 @@ defmodule ShopifyAPI.ShopServer do
     end
   end
 
+  @spec drop(String.t()) :: {:ok, true}
+  def drop(domain), do: {:ok, :ets.delete(@table, domain)}
+
+  @spec drop!(String.t()) :: {:ok, String.t()} | {:error, String.t()}
+  def drop!(domain) do
+    case get(domain) do
+      {:ok, _} ->
+        :ets.delete(@table, domain)
+        {:ok, "Shop for #{domain} deleted"}
+
+      _ ->
+        {:error, "Shop for #{domain} could not be deleted deleted. Shop not found"}
+    end
+  end
+
+  @impl true
+  @spec drop_all() :: boolean()
   def drop_all do
     :ets.delete_all_objects(@table)
   end
@@ -47,7 +69,7 @@ defmodule ShopifyAPI.ShopServer do
   @impl GenServer
   def init(:ok) do
     create_table!()
-    for %Shop{} = shop <- do_initialize(), do: set(shop)
+    for %Shop{} = shop <- do_initialize(), do: set(shop, false)
     {:ok, :no_state}
   end
 

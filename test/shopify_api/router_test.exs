@@ -22,7 +22,7 @@ defmodule Test.ShopifyAPI.RouterTest do
   @shop_domain "shop.example.com"
 
   setup_all do
-    AppServer.set(@app_name, %App{
+    AppServer.set(%App{
       auth_redirect_uri: @redirect_uri,
       client_secret: @client_secret,
       name: @app_name,
