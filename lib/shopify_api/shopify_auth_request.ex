@@ -41,14 +41,23 @@ defmodule ShopifyAPI.ShopifyAuthRequest do
     generate_auth_uri(app, domain, redirect_uri)
   end
 
-  def generate_auth_uri(app, domain, redirect_uri) do
+  @spec generate_auth_uri(App.t(), String.t(), String.t()) :: String.t()
+  def generate_auth_uri(%App{} = app, domain, redirect_uri)
+      when is_binary(domain) and is_binary(redirect_uri) do
     query_params = [
       client_id: app.client_id,
       scope: app.scope,
       redirect_uri: redirect_uri,
-      state: app.nonce
+      nonce: app.nonce
     ]
 
     "https://#{domain}/admin/oauth/authorize?#{URI.encode_query(query_params)}"
+  end
+
+  def generate_auth_uri(app, domain, redirect_uri) do
+    {:error,
+     "unexpected data passed. Expecting App.t() for arg1. got: '#{inspect(app)}'. \nExpecting String.t() for arg2. got: '#{
+       inspect(domain)
+     }' \nExpecting String.t() for arg3. got: '#{inspect(redirect_uri)}'"}
   end
 end
