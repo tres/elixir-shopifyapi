@@ -22,26 +22,47 @@ defmodule ShopifyAPI.Authorizer do
         "app: #{ConnHelpers.app_name(conn)}"
     )
 
-    if app_installed_in_shop?(conn),
-      do: authorize_run_request(conn),
+    if app_token_exists?(conn),
+      do: handle_authorized_request(conn),
       else: initialize_installation(conn)
   end
 
-  @spec app_installed_in_shop?(Plug.Conn.t()) :: boolean()
-  def app_installed_in_shop?(conn) do
+  @spec app_token_exists?(Plug.Conn.t()) :: boolean()
+  def app_token_exists?(conn) do
     shop_domain = ConnHelpers.shop_domain(conn)
+    app_name = ConnHelpers.app_name(conn)
 
     found =
-      case ShopServer.get(shop_domain) do
+      case AuthTokenServer.get(shop_domain, app_name) do
         {:ok, _} -> true
         {:error, _} -> false
       end
 
     Logger.debug(
-      "#{__MODULE__} determining if app is already installed in shop '#{shop_domain} -- #{found}'"
+      "#{__MODULE__} determining if app token exists shop: #{shop_domain} app: #{app_name} -- #{found}'"
     )
 
     found
+  end
+
+  def handle_authorized_request(conn) do
+    shop_domain = ConnHelpers.shop_domain(conn)
+    app_name = ConnHelpers.app_name(conn)
+
+    case check_app_installed(conn) do
+      {:ok, _msg} ->
+        Logger.debug(
+          "#{__MODULE__} app installed in shop: #{shop_domain} app: #{app_name} continuing with run request'"
+        )
+        authorize_run_request(conn)
+        {:error, msg} ->
+          render_message(conn, msg)
+      _ ->
+        Logger.debug(
+          "#{__MODULE__} app not installed in shop: #{shop_domain} app: #{app_name} continuing with installation'"
+        )
+        install_app(conn)
+    end
   end
 
   @spec authorize_run_request(Plug.Conn.t()) :: Plug.Conn.t()
@@ -243,11 +264,19 @@ defmodule ShopifyAPI.Authorizer do
     end
   end
 
+  defp check_app_installed(conn) do
+    case Config.lookup(__MODULE__, :check_app_installed) do
+      {module, function} -> apply(module, function, [conn])
+      {module, function, _args} -> apply(module, function, [conn])
+      _ -> render_default_installed_response(conn)
+    end
+  end
+
   defp run_post_auth(conn) do
     case Config.lookup(__MODULE__, :run_app) do
       {module, function} -> apply(module, function, [conn])
       {module, function, _args} -> apply(module, function, [conn])
-      _ -> render_authenticated_response(conn)
+      _ -> render_default_authenticated_response(conn)
     end
   end
 
@@ -255,7 +284,7 @@ defmodule ShopifyAPI.Authorizer do
     case Config.lookup(__MODULE__, :post_install) do
       {module, function} -> apply(module, function, [conn])
       {module, function, _args} -> apply(module, function, [conn])
-      _ -> render_installed_response(conn)
+      _ -> render_default_run_response(conn)
     end
   end
 
@@ -346,7 +375,16 @@ defmodule ShopifyAPI.Authorizer do
     end
   end
 
-  defp render_authenticated_response(conn) do
+  defp render_message(conn, message) do
+    shop_domain = ConnHelpers.shop_domain(conn)
+    Logger.debug("#{__MODULE__} rendering authenticated response for #{shop_domain}")
+
+    conn
+    |> Conn.resp(200, message)
+    |> Conn.halt()
+  end
+
+  defp render_default_authenticated_response(conn) do
     shop_domain = ConnHelpers.shop_domain(conn)
     Logger.debug("#{__MODULE__} rendering authenticated response for #{shop_domain}")
 
@@ -360,19 +398,34 @@ defmodule ShopifyAPI.Authorizer do
     |> Conn.halt()
   end
 
-  defp render_installed_response(conn) do
+  defp render_default_installed_response(conn) do
     shop_domain = ConnHelpers.shop_domain(conn)
     Logger.debug("#{__MODULE__} rendering authenticated response for #{shop_domain}")
 
     conn
     |> Conn.resp(
       200,
-      "Authenticated. <p>Update <ul><pre>config :shopify_api, ShopifyAPI.Authorizer, " <>
-        "post_install: {MyAppWeb.AppController, :post_install} </pre></ul> to configure. See " <>
+      "Installed. <p>Update <ul><pre>config :shopify_api, ShopifyAPI.Authorizer, " <>
+        "check_app_installed: {MyAppWeb.AppController, :check_app_installed} </pre></ul> to configure. See " <>
         "ShopifyAPI README for more information</p>"
     )
     |> Conn.halt()
   end
+
+  defp render_default_run_response(conn) do
+     shop_domain = ConnHelpers.shop_domain(conn)
+     Logger.debug("#{__MODULE__} rendering authenticated response for #{shop_domain}")
+
+     conn
+     |> Conn.resp(
+       200,
+       "<h1>This is The Default Run App Response For ShopifyAPI.</h1> " <>
+       "<p>Update <ul><pre>config :shopify_api, ShopifyAPI.Authorizer, " <>
+         "post_install: {MyAppWeb.AppController, :post_install} </pre></ul> to configure. See " <>
+         "ShopifyAPI README for more information</p>"
+     )
+     |> Conn.halt()
+   end
 
   defp redirect_to_shopify_auth(conn, uri) do
     Logger.debug(

@@ -67,8 +67,8 @@ defmodule ShopifyAPI.App do
         {:ok, body |> JSONSerializer.decode!() |> Map.get("access_token")}
 
       {:ok, %HTTPoison.Response{} = response} ->
-        Logger.warn(fn -> "#{__MODULE__} fetching token code: #{response.status_code}" end)
-        {:error, response.status_code}
+        Logger.info(fn -> "#{__MODULE__} fetching token code: #{response.status_code} -- #{response.body}" end)
+        {:error, "#{response.status_code} -- #{response.body}"}
 
       {:error, %HTTPoison.Error{reason: reason}} ->
         Logger.warn(fn -> "#{__MODULE__} error fetching token: #{inspect(reason)}" end)

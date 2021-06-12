@@ -93,6 +93,7 @@ defmodule ShopifyAPI.ConnHelpers do
 
   @doc false
   def verify_nonce(%App{nonce: nonce}, params) do
+    Logger.info("app nonce => #{inspect nonce}\npassed nonce => #{inspect params["state"]}")
     nonce == params["state"]
   end
 

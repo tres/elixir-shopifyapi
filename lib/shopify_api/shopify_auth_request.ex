@@ -48,7 +48,7 @@ defmodule ShopifyAPI.ShopifyAuthRequest do
       client_id: app.client_id,
       scope: app.scope,
       redirect_uri: redirect_uri,
-      nonce: app.nonce
+      state: app.nonce
     ]
 
     "https://#{domain}/admin/oauth/authorize?#{URI.encode_query(query_params)}"
