@@ -61,7 +61,7 @@ defmodule ShopifyAPI.Authorizer do
         Logger.debug(
           "#{__MODULE__} app not installed in shop: #{shop_domain} app: #{app_name} continuing with installation'"
         )
-        install_app(conn)
+        initialize_installation(conn)
     end
   end
 
